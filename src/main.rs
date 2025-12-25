@@ -30,12 +30,6 @@ fn main() {
         .build_global()
         .unwrap();
 
-    println!("Batch 1D FFT Configuration:");
-    println!("  Batch size: {}", args.batch);
-    println!("  FFT length: {}", args.length);
-    println!("  Threads: {}", args.threads);
-    println!();
-
     // Initialize input data: batch of signals in a contiguous array
     // Total size: batch * length complex numbers
     let total_size = args.batch * args.length;
@@ -49,9 +43,6 @@ fn main() {
         })
         .collect();
 
-    println!("Initialized {} complex numbers ({} batches × {} length)",
-             total_size, args.batch, args.length);
-
     // Perform batch FFT with timing
     let start = Instant::now();
     perform_batch_fft(&mut data, args.batch, args.length);
@@ -62,15 +53,9 @@ fn main() {
     let flops = calculate_flops(args.batch, args.length);
     let gflops = flops / duration.as_secs_f64() / 1e9;
 
-    // Output results
-    println!();
-    println!("Results:");
-    println!("  Batch size: {}", args.batch);
-    println!("  FFT length: {}", args.length);
-    println!("  Threads: {}", args.threads);
-    println!("  Execution time: {:.3} ms", time_ms);
-    println!("  Total FLOPs: {:.2e}", flops);
-    println!("  Performance: {:.3} GFLOPS", gflops);
+    // Output results as CSV
+    println!("batch,fft_length,threads,time_ms,gflops");
+    println!("{},{},{},{:.3},{:.3}", args.batch, args.length, args.threads, time_ms, gflops);
 }
 
 /// Perform batch FFT processing using parallel execution
