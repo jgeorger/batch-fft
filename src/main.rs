@@ -55,7 +55,7 @@ fn main() {
 
     // Output results as CSV
     println!("batch,fft_length,threads,time_ms,gflops");
-    println!("{},{},{},{:.3},{:.3}", args.batch, args.length, args.threads, time_ms, gflops);
+    println!("{},{},{},{:.3},{:.0}", args.batch, args.length, args.threads, time_ms, gflops);
 }
 
 /// Perform batch FFT processing using parallel execution
