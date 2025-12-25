@@ -74,7 +74,7 @@ fn main() {
 }
 
 /// Perform batch FFT processing using parallel execution
-fn perform_batch_fft(data: &mut [Complex32], batch: usize, length: usize) {
+fn perform_batch_fft(data: &mut [Complex32], _batch: usize, length: usize) {
     // Create FFT planner (thread-safe)
     let mut planner = FftPlanner::<f32>::new();
     let fft = planner.plan_fft_forward(length);
