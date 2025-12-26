@@ -41,21 +41,14 @@ bool parse_args(int argc, char* argv[], Args& args) {
     return args.batch > 0 && args.length > 0 && args.threads > 0;
 }
 
-void perform_batch_fft(fftw_complex* data, size_t batch, size_t length, int threads) {
-    // Create a single plan to use as a template
-    fftw_complex* temp = fftw_alloc_complex(length);
-    fftw_plan plan = fftw_plan_dft_1d(length, temp, temp, FFTW_FORWARD, FFTW_ESTIMATE);
-    fftw_free(temp);
-
-    // Process batches in parallel using the same plan
+void perform_batch_fft(fftw_complex* data, size_t batch, size_t length, int threads, fftw_plan plan) {
+    // Process batches in parallel using the pre-created plan
     #pragma omp parallel for num_threads(threads)
     for (size_t i = 0; i < batch; i++) {
         fftw_complex* signal = &data[i * length];
         // Execute FFT on this batch element using new-array execution
         fftw_execute_dft(plan, signal, signal);
     }
-
-    fftw_destroy_plan(plan);
 }
 
 double calculate_flops(size_t batch, size_t length) {
@@ -85,9 +78,14 @@ int main(int argc, char* argv[]) {
         data[i][1] = 0.0;  // Imaginary part
     }
 
+    // Create FFT plan before timing (using FFTW_PATIENT for better optimization)
+    fftw_complex* temp = fftw_alloc_complex(args.length);
+    fftw_plan plan = fftw_plan_dft_1d(args.length, temp, temp, FFTW_FORWARD, FFTW_PATIENT);
+    fftw_free(temp);
+
     // Perform batch FFT with timing
     auto start = std::chrono::high_resolution_clock::now();
-    perform_batch_fft(data, args.batch, args.length, args.threads);
+    perform_batch_fft(data, args.batch, args.length, args.threads, plan);
     auto end = std::chrono::high_resolution_clock::now();
 
     // Calculate performance metrics
@@ -103,6 +101,7 @@ int main(int argc, char* argv[]) {
               << std::fixed << std::setprecision(0) << gflops << "\n";
 
     // Cleanup
+    fftw_destroy_plan(plan);
     fftw_free(data);
 
     return 0;
