@@ -20,6 +20,21 @@ A Rust application for performing batch 1D Complex-to-Complex (C2C) Fast Fourier
 cargo build --release
 ```
 
+## Testing
+
+Run the included unit tests to verify FFT correctness:
+
+```bash
+cargo test
+```
+
+The test suite includes:
+- **DC signal test**: Verifies constant signals produce energy only in DC bin
+- **Single frequency test**: Verifies frequency detection at correct FFT bin
+- **Parseval's theorem test**: Verifies energy conservation between time and frequency domains
+- **Inverse FFT test**: Verifies forward + inverse FFT recovers original signal
+- **Batch FFT test**: Verifies batch processing handles multiple FFTs correctly
+
 ## Usage
 
 ```bash
