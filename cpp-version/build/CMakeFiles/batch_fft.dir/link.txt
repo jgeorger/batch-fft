@@ -1,1 +1,0 @@
-/usr/bin/c++ -O3 -march=native -arch arm64 -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/batch_fft.dir/src/batch_fft.cpp.o -o batch_fft   -L/opt/homebrew/opt/libomp/lib  -Wl,-rpath,/opt/homebrew/opt/libomp/lib /opt/homebrew/opt/fftw/lib/libfftw3.dylib /opt/homebrew/opt/libomp/lib/libomp.dylib

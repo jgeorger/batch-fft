@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/Users/jgeorger/stuff/proj/rustFFT/batch-fft/cpp-version/build/cmake_install.cmake"
-	],
-	"Parallel" : false
-}
