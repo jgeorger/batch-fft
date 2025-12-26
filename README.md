@@ -66,28 +66,29 @@ batch,fft_length,threads,time_ms,gflops
 
 ## Performance Comparison: Rust vs C++
 
-A C++ implementation using FFTW3 and OpenMP is included in the `cpp-version/` directory for performance comparison. The C++ version uses FFTW_PATIENT planning and creates FFT plans before timing measurements.
+A C++ implementation using FFTW3 with native threading is included in the `cpp-version/` directory for performance comparison. The C++ version uses `fftw_plan_many_dft()` for batch processing with `fftw_init_threads()` and `fftw_plan_with_nthreads()` for multi-threading. Plans are created with FFTW_MEASURE before timing measurements.
 
 ### Benchmark Results
 
 All tests performed on the same hardware with identical workloads:
 
-| Workload | Threads | Rust Time | Rust GFLOPS | C++ Time | C++ GFLOPS | Rust Speedup |
-|----------|---------|-----------|-------------|----------|------------|--------------|
-| 100 × 256 | 4 | 0.104 ms | 10 | 0.665 ms | 2 | **6.4x** |
-| 1000 × 1024 | 8 | 1.282 ms | 40 | 3.387 ms | 15 | **2.6x** |
-| 2000 × 2048 | 8 | 3.208 ms | 70 | 5.829 ms | 39 | **1.8x** |
-| 2000 × 2048 | 1 | 13.515 ms | 17 | 18.134 ms | 12 | **1.3x** |
+| Workload | Threads | Rust Time | Rust GFLOPS | C++ Time | C++ GFLOPS | Winner |
+|----------|---------|-----------|-------------|----------|------------|--------|
+| 100 × 256 | 4 | 0.104 ms | 10 | 0.062 ms | 17 | **C++ (1.7x)** |
+| 1000 × 1024 | 8 | 1.501 ms | 34 | 1.743 ms | 29 | **Rust (1.2x)** |
+| 2000 × 2048 | 8 | 4.270 ms | 53 | 5.307 ms | 42 | **Rust (1.2x)** |
+| 2000 × 2048 | 1 | 13.335 ms | 17 | 15.253 ms | 15 | **Rust (1.1x)** |
 
 ### Key Findings
 
-- **Rust outperforms C++/FFTW3 by 1.3x to 6.4x** across all workloads
-- **Largest advantage on small workloads** (6.4x faster for 100×256), suggesting lower overhead
-- **Both scale well with threading**, but Rust maintains its performance advantage
-- **Even single-threaded, Rust is 1.3x faster**, demonstrating superior core FFT implementation
-- **RustFFT library is highly competitive** with the industry-standard FFTW3, and in these tests, significantly faster
+- **Performance is highly competitive** between Rust and C++/FFTW3
+- **C++ wins on small workloads** (1.7x faster for 100×256), likely due to FFTW's optimized batch planning
+- **Rust wins on medium-to-large workloads** (1.1-1.2x faster), demonstrating excellent scaling
+- **Both implementations scale efficiently** with thread count
+- **FFTW's native batch interface** (`fftw_plan_many_dft`) with threading is significantly more efficient than parallelizing individual FFTs with OpenMP (previous C++ implementation was 2-10x slower)
+- **Both RustFFT and FFTW3 are world-class FFT libraries** with different performance characteristics
 
-The performance advantage demonstrates the quality of the RustFFT library and the efficiency of Rayon's parallel execution model.
+The results demonstrate that both Rust (with RustFFT and Rayon) and C++ (with FFTW3 native threading) can achieve excellent performance for batch FFT processing, with the optimal choice depending on workload size.
 
 ## Dependencies
 
