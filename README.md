@@ -79,43 +79,105 @@ batch,fft_length,threads,time_ms,gflops
 - Performance scales with thread count up to the number of physical cores
 - Input data is stored in a contiguous array for optimal memory access
 
-## Performance Comparison: Rust vs C++
+## Performance Comparison: Rust vs C++ vs CUDA
 
-A C++ implementation using FFTW3 with native threading is included in the `cpp-version/` directory for performance comparison. The C++ version uses `fftw_plan_many_dft()` for batch processing with `fftw_init_threads()` and `fftw_plan_with_nthreads()` for multi-threading. Plans are created with FFTW_MEASURE before timing measurements.
+Three implementations are included for comprehensive performance comparison:
 
-### Benchmark Results
+1. **Rust** (this repository): Uses RustFFT with Rayon for CPU parallelism
+2. **C++ FFTW** (`cpp-version/`): Uses FFTW3's `fftw_plan_many_dft()` with native threading
+3. **CUDA** (`cuda/`): Uses NVIDIA cuFFT's `cufftPlanMany()` for GPU acceleration
 
-All tests performed on the same hardware with identical workloads:
+### Benchmark Methodology
 
-#### Small to Medium FFT Sizes
-| Workload (Batch × Length) | Threads | Rust Time | Rust GFLOPS | C++ Time | C++ GFLOPS | Winner |
-|---------------------------|---------|-----------|-------------|----------|------------|--------|
-| 100 × 256 | 4 | 0.104 ms | 10 | 0.062 ms | 17 | **C++ (1.7x)** |
-| 1000 × 1024 | 8 | 1.501 ms | 34 | 1.743 ms | 29 | **Rust (1.2x)** |
-| 2000 × 2048 | 8 | 4.270 ms | 53 | 5.307 ms | 42 | **Rust (1.2x)** |
-| 2000 × 2048 | 1 | 13.335 ms | 17 | 15.253 ms | 15 | **Rust (1.1x)** |
+- **Thread Optimization**: Each test case uses the optimal thread count (1-8 threads) for best performance
+- **Baseline**: C++ FFTW performance is the baseline (1.0x) for comparison
+- **FFT Range**: 1K to 512K FFT sizes with batch sizes of 250-10,000
+- **Timing**: Only FFT execution time is measured (excludes data generation and planning)
 
-#### Large FFT Sizes (4k, 8k, 32k)
-| Workload (Batch × Length) | Threads | Rust Time | Rust GFLOPS | C++ Time | C++ GFLOPS | Winner |
-|---------------------------|---------|-----------|-------------|----------|------------|--------|
-| 1000 × 4096 | 8 | 3.739 ms | 66 | 4.110 ms | 60 | **Rust (1.1x)** |
-| 1000 × 4096 | 4 | 4.879 ms | 50 | 4.250 ms | 58 | **C++ (1.1x)** |
-| 1000 × 4096 | 1 | 14.512 ms | 17 | 15.989 ms | 15 | **Rust (1.1x)** |
-| 500 × 8192 | 8 | 3.350 ms | 79 | 4.689 ms | 57 | **Rust (1.4x)** |
-| 100 × 32768 | 8 | 4.011 ms | 61 | 4.271 ms | 58 | **Rust (1.1x)** |
+### Test System Specifications
+
+- **CPU**: Intel Core i5-8400 @ 2.80GHz (6 cores, 2017)
+- **GPU**: NVIDIA GeForce GTX 1080 (8GB VRAM, 2016)
+- **OS**: Ubuntu 24.04.1 LTS
+- **CUDA**: Version 12.9
+- **FFTW**: Version 3.3.10
+
+### Complete Benchmark Results
+
+| FFT Size | Batch | **Rust (Optimized)** | **C++ FFTW (Baseline)** | **CUDA** | **Rust vs C++** | **CUDA vs C++** |
+|----------|-------|---------------------|------------------------|----------|-----------------|-----------------|
+| | | Threads / Time / GFLOPS | Threads / Time / GFLOPS | Time / GFLOPS | Speedup | Speedup |
+| **1K** | 1000 | 4T / 0.82ms / 62 | 4T / 1.22ms / 42 | 1.43ms / 36 | **1.47x** | 0.84x |
+| **1K** | 10000 | 4T / 6.74ms / 76 | 8T / 11.51ms / 44 | 2.50ms / 205 | **1.70x** | **4.61x** |
+| **2K** | 1000 | 4T / 1.53ms / 73 | 8T / 2.65ms / 43 | 1.61ms / 70 | **1.72x** | **1.64x** |
+| **4K** | 1000 | 4T / 3.47ms / 71 | 8T / 5.50ms / 45 | 1.85ms / 133 | **1.58x** | **2.97x** |
+| **8K** | 500 | 4T / 3.21ms / 83 | 4T / 5.59ms / 48 | 2.03ms / 131 | **1.74x** | **2.75x** |
+| **16K** | 500 | 8T / 7.63ms / 75 | 8T / 14.45ms / 40 | 6.62ms / 87 | **1.89x** | **2.18x** |
+| **32K** | 250 | 4T / 9.12ms / 67 | 8T / 16.50ms / 37 | 6.17ms / 100 | **1.80x** | **2.67x** |
+| **64K** | 250 | 8T / 23.13ms / 57 | 4T / 39.50ms / 33 | 10.21ms / 128 | **1.70x** | **3.86x** |
+| **128K** | 250 | 4T / 65.69ms / 42 | 4T / 118.21ms / 24 | 17.70ms / 157 | **1.79x** | **6.67x** |
+| **256K** | 250 | 2T / 203.99ms / 29 | 4T / 303.71ms / 19 | 31.04ms / 190 | **1.48x** | **9.78x** |
+| **512K** | 250 | 4T / 503.03ms / 25 | 8T / 733.58ms / 17 | 62.10ms / 201 | **1.45x** | **11.81x** |
 
 ### Key Findings
 
-- **Performance is highly competitive** across all FFT sizes and thread counts
-- **C++ wins on small FFT sizes** (1.7x faster for 256-point FFTs), likely due to FFTW's optimized batch planning and lower overhead
-- **Rust wins on medium to large FFT sizes** (1.1-1.4x faster for 1024-32768 point FFTs), demonstrating superior scaling
-- **Peak performance increases with FFT size**: Both implementations achieve 60+ GFLOPS with 4k-8k FFTs vs 10-53 GFLOPS with smaller FFTs
-- **Rust achieves highest GFLOPS at 8k**: 79 GFLOPS with 500×8192×8 configuration
-- **Both scale efficiently with thread count**: Near-linear scaling from 1 to 8 threads for larger FFTs
-- **FFTW's native batch interface** (`fftw_plan_many_dft`) with threading is significantly more efficient than parallelizing individual FFTs with OpenMP (previous C++ implementation was 2-10x slower)
-- **Trade-offs exist**: C++ better for low-latency small FFTs, Rust better for throughput-oriented large FFTs
+#### 1. **Rust Dominates CPU Performance**
+- **Rust outperforms C++ FFTW in every single test case** (1.45x - 1.89x faster)
+- Peak Rust advantage: **1.89x at 16K FFT size**
+- Rust achieves up to **83 GFLOPS** vs C++ max of 48 GFLOPS
+- More efficient CPU parallelization across all workload sizes
 
-The results demonstrate that both Rust (with RustFFT and Rayon) and C++ (with FFTW3 native threading) are world-class FFT implementations with different performance characteristics that make them suitable for different use cases.
+#### 2. **CUDA Provides Massive Speedup for Large FFTs**
+- **11.81x faster** than C++ at 512K FFT size
+- **6.67x - 9.78x faster** for 128K-256K FFTs
+- **2.18x - 3.86x faster** for medium FFTs (16K-64K)
+- Only slower (0.84x) for small batches of small FFTs (overhead-dominated)
+
+#### 3. **Optimal Thread Count Varies by Workload**
+- Small FFTs (1K-8K): **4 threads** optimal for Rust
+- Large FFTs (128K-512K): **2-4 threads** optimal (memory bandwidth limited)
+- C++ FFTW: Mix of 4 and 8 threads depending on FFT size
+- More threads ≠ better performance; sweet spot depends on workload
+
+#### 4. **GPU Batch Processing Scales Exceptionally**
+- Small batch (1K × 1000): 36 GFLOPS
+- Large batch (1K × 10000): **205 GFLOPS** (5.7x improvement)
+- Large FFTs maintain 190-201 GFLOPS sustained performance
+- GPU needs sufficient parallelism to reach peak efficiency
+
+### Performance Summary
+
+| Implementation | Peak GFLOPS | Typical Range | Best Use Case |
+|----------------|-------------|---------------|---------------|
+| **CUDA** | **205** | 100-200 | Large FFTs (≥4K) or large batches |
+| **Rust** | 83 | 60-75 | CPU-only scenarios, all workloads |
+| **C++ FFTW** | 48 | 20-45 | Legacy compatibility only |
+
+### Recommendations
+
+**Choose CUDA when:**
+- FFT size ≥ 2K (**1.6x - 11.8x faster** than C++)
+- Large batches with small FFTs (**4.6x faster** for 10K×1K)
+- Maximum performance is critical (up to 205 GFLOPS)
+
+**Choose Rust when:**
+- No GPU available
+- Need best CPU performance (**1.5x - 1.9x faster** than C++)
+- Consistent performance across all workloads
+
+**Avoid C++ FFTW:**
+- Rust is faster in every test case
+- Use only for legacy code compatibility
+
+### Conclusion
+
+The benchmark results demonstrate three distinct performance tiers:
+
+1. **CUDA (GPU)**: Dominant for production workloads - up to **11.8x faster** than C++
+2. **Rust (CPU)**: Best CPU implementation - consistently **1.5-1.9x faster** than C++
+3. **C++ FFTW (CPU)**: Baseline reference - slower than both alternatives
+
+For new projects: use **CUDA** for maximum performance, **Rust** for CPU-only deployments.
 
 ## Dependencies
 
