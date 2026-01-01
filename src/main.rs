@@ -43,9 +43,13 @@ fn main() {
         })
         .collect();
 
-    // Perform batch FFT with timing
+    // Create FFT plan BEFORE timing (matches C++ FFTW and CUDA methodology)
+    let mut planner = FftPlanner::<f32>::new();
+    let fft = planner.plan_fft_forward(args.length);
+
+    // Perform batch FFT with timing (execution only, plan creation excluded)
     let start = Instant::now();
-    perform_batch_fft(&mut data, args.batch, args.length);
+    perform_batch_fft_with_plan(&mut data, args.length, &fft);
     let duration = start.elapsed();
 
     // Calculate performance metrics
@@ -58,12 +62,8 @@ fn main() {
     println!("{},{},{},{:.3},{:.0}", args.batch, args.length, args.threads, time_ms, gflops);
 }
 
-/// Perform batch FFT processing using parallel execution
-fn perform_batch_fft(data: &mut [Complex32], _batch: usize, length: usize) {
-    // Create FFT planner (thread-safe)
-    let mut planner = FftPlanner::<f32>::new();
-    let fft = planner.plan_fft_forward(length);
-
+/// Perform batch FFT processing using parallel execution with pre-created plan
+fn perform_batch_fft_with_plan(data: &mut [Complex32], length: usize, fft: &std::sync::Arc<dyn rustfft::Fft<f32>>) {
     // Process batches in parallel
     data.par_chunks_mut(length)
         .for_each(|signal| {
@@ -73,6 +73,14 @@ fn perform_batch_fft(data: &mut [Complex32], _batch: usize, length: usize) {
             // Perform in-place FFT
             fft.process_with_scratch(signal, &mut scratch);
         });
+}
+
+/// Perform batch FFT processing using parallel execution (creates plan internally)
+/// Used by tests
+fn perform_batch_fft(data: &mut [Complex32], _batch: usize, length: usize) {
+    let mut planner = FftPlanner::<f32>::new();
+    let fft = planner.plan_fft_forward(length);
+    perform_batch_fft_with_plan(data, length, &fft);
 }
 
 /// Calculate the number of floating-point operations for batch FFT

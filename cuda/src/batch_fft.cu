@@ -47,7 +47,7 @@ void generate_input_data(cufftComplex* h_data, size_t batch, size_t length) {
     }
 }
 
-void perform_batch_fft(cufftComplex* d_data, size_t batch, size_t length) {
+cufftHandle create_batch_fft_plan(size_t batch, size_t length) {
     cufftHandle plan;
     int n[] = {static_cast<int>(length)};
 
@@ -67,14 +67,15 @@ void perform_batch_fft(cufftComplex* d_data, size_t batch, size_t length) {
         batch                       // batch size
     ));
 
+    return plan;
+}
+
+void execute_batch_fft(cufftHandle plan, cufftComplex* d_data) {
     // Execute batch FFT (cuFFT handles GPU parallelism internally)
     CUFFT_CHECK(cufftExecC2C(plan, d_data, d_data, CUFFT_FORWARD));
 
     // Synchronize to ensure completion
     CUDA_CHECK(cudaDeviceSynchronize());
-
-    // Cleanup
-    CUFFT_CHECK(cufftDestroy(plan));
 }
 
 double calculate_flops(size_t batch, size_t length) {
@@ -104,8 +105,11 @@ int main(int argc, char* argv[]) {
     CUDA_CHECK(cudaMemcpy(d_data, h_data, sizeof(cufftComplex) * total_size,
                           cudaMemcpyHostToDevice));
 
+    // Create FFT plan (NOT timed - matches Rust implementation)
+    cufftHandle plan = create_batch_fft_plan(args.batch, args.length);
+
     // Warm-up run for accurate timing
-    perform_batch_fft(d_data, args.batch, args.length);
+    execute_batch_fft(plan, d_data);
 
     // Re-copy data for actual timed run
     CUDA_CHECK(cudaMemcpy(d_data, h_data, sizeof(cufftComplex) * total_size,
@@ -116,9 +120,9 @@ int main(int argc, char* argv[]) {
     CUDA_CHECK(cudaEventCreate(&start));
     CUDA_CHECK(cudaEventCreate(&stop));
 
-    // Perform timed FFT
+    // Perform timed FFT (execution only - plan creation excluded)
     CUDA_CHECK(cudaEventRecord(start));
-    perform_batch_fft(d_data, args.batch, args.length);
+    execute_batch_fft(plan, d_data);
     CUDA_CHECK(cudaEventRecord(stop));
     CUDA_CHECK(cudaEventSynchronize(stop));
 
@@ -136,7 +140,8 @@ int main(int argc, char* argv[]) {
               << std::fixed << std::setprecision(3) << milliseconds << ","
               << std::fixed << std::setprecision(0) << gflops << "\n";
 
-    // Cleanup
+    // Cleanup (NOT timed)
+    CUFFT_CHECK(cufftDestroy(plan));
     CUDA_CHECK(cudaEventDestroy(start));
     CUDA_CHECK(cudaEventDestroy(stop));
     CUDA_CHECK(cudaFree(d_data));
