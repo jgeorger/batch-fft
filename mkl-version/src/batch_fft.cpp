@@ -5,9 +5,8 @@
 #include <chrono>
 #include <cmath>
 #include <cstring>
-#include <fftw3.h>
-
-// Use single precision FFTW (fftwf_* functions)
+#include <mkl.h>
+#include <mkl_dfti.h>
 
 struct Args {
     size_t batch;
@@ -57,53 +56,82 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Initialize FFTW threading (single precision version)
-    fftwf_init_threads();
-    fftwf_plan_with_nthreads(args.threads);
+    // Set MKL thread count
+    mkl_set_num_threads(args.threads);
 
     // Initialize input data: batch of signals in a contiguous array
     size_t total_size = args.batch * args.length;
-    fftwf_complex* data = fftwf_alloc_complex(total_size);
+    std::vector<std::complex<float>> data(total_size);
 
     // Generate sample data (sine wave with varying frequencies)
     for (size_t i = 0; i < total_size; i++) {
         float t = static_cast<float>(i % args.length) / static_cast<float>(args.length);
         size_t batch_idx = i / args.length;
         float freq = 1.0f + static_cast<float>(batch_idx);
-        data[i][0] = std::cos(2.0f * M_PI * freq * t);  // Real part
-        data[i][1] = 0.0f;  // Imaginary part
+        data[i] = std::complex<float>(std::cos(2.0f * M_PI * freq * t), 0.0f);
     }
 
-    // Create batch FFT plan before timing using FFTW's native batch interface
-    // fftwf_plan_many_dft parameters (single precision):
-    //   rank=1: 1D FFT
-    //   n: size of each FFT dimension
-    //   howmany: number of FFTs to perform (batch size)
-    //   in/out: input/output arrays (in-place transform)
-    //   inembed/onembed: NULL for simple layout
-    //   istride/ostride: 1 (elements are contiguous within each FFT)
-    //   idist/odist: length (distance between start of consecutive FFTs)
-    int n[] = {static_cast<int>(args.length)};
-    fftwf_plan plan = fftwf_plan_many_dft(
-        1,                          // rank (1D)
-        n,                          // dimensions of each FFT
-        args.batch,                 // number of FFTs (batch size)
-        data,                       // input array
-        NULL,                       // inembed (NULL = same as n)
-        1,                          // istride (elements are contiguous)
-        args.length,                // idist (distance between FFTs)
-        data,                       // output array (in-place)
-        NULL,                       // onembed (NULL = same as n)
-        1,                          // ostride
-        args.length,                // odist
-        FFTW_FORWARD,               // direction
-        FFTW_MEASURE                // flags
-    );
+    // Create MKL FFT descriptor for batch processing (single precision)
+    DFTI_DESCRIPTOR_HANDLE handle = nullptr;
+    MKL_LONG status;
 
-    // Perform batch FFT with timing
+    // Create descriptor for 1D complex-to-complex FFT (single precision)
+    status = DftiCreateDescriptor(&handle, DFTI_SINGLE, DFTI_COMPLEX, 1, args.length);
+    if (status != DFTI_NO_ERROR) {
+        std::cerr << "Error creating MKL descriptor: " << DftiErrorMessage(status) << std::endl;
+        return 1;
+    }
+
+    // Configure for batch processing
+    status = DftiSetValue(handle, DFTI_NUMBER_OF_TRANSFORMS, args.batch);
+    if (status != DFTI_NO_ERROR) {
+        std::cerr << "Error setting number of transforms: " << DftiErrorMessage(status) << std::endl;
+        DftiFreeDescriptor(&handle);
+        return 1;
+    }
+
+    // Set input stride (distance between consecutive elements in same transform)
+    status = DftiSetValue(handle, DFTI_INPUT_DISTANCE, args.length);
+    if (status != DFTI_NO_ERROR) {
+        std::cerr << "Error setting input distance: " << DftiErrorMessage(status) << std::endl;
+        DftiFreeDescriptor(&handle);
+        return 1;
+    }
+
+    // Set output stride (distance between consecutive elements in same transform)
+    status = DftiSetValue(handle, DFTI_OUTPUT_DISTANCE, args.length);
+    if (status != DFTI_NO_ERROR) {
+        std::cerr << "Error setting output distance: " << DftiErrorMessage(status) << std::endl;
+        DftiFreeDescriptor(&handle);
+        return 1;
+    }
+
+    // In-place transform
+    status = DftiSetValue(handle, DFTI_PLACEMENT, DFTI_INPLACE);
+    if (status != DFTI_NO_ERROR) {
+        std::cerr << "Error setting placement: " << DftiErrorMessage(status) << std::endl;
+        DftiFreeDescriptor(&handle);
+        return 1;
+    }
+
+    // Commit the descriptor (creates the plan - done before timing)
+    status = DftiCommitDescriptor(handle);
+    if (status != DFTI_NO_ERROR) {
+        std::cerr << "Error committing descriptor: " << DftiErrorMessage(status) << std::endl;
+        DftiFreeDescriptor(&handle);
+        return 1;
+    }
+
+    // Perform batch FFT with timing (fair timing - excludes plan creation)
     auto start = std::chrono::high_resolution_clock::now();
-    fftwf_execute(plan);
+    status = DftiComputeForward(handle, data.data());
     auto end = std::chrono::high_resolution_clock::now();
+
+    if (status != DFTI_NO_ERROR) {
+        std::cerr << "Error computing FFT: " << DftiErrorMessage(status) << std::endl;
+        DftiFreeDescriptor(&handle);
+        return 1;
+    }
 
     // Calculate performance metrics
     std::chrono::duration<double> duration = end - start;
@@ -118,9 +146,7 @@ int main(int argc, char* argv[]) {
               << std::fixed << std::setprecision(0) << gflops << "\n";
 
     // Cleanup
-    fftwf_destroy_plan(plan);
-    fftwf_free(data);
-    fftwf_cleanup_threads();
+    DftiFreeDescriptor(&handle);
 
     return 0;
 }

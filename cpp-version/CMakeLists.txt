@@ -4,20 +4,20 @@ project(batch_fft_cpp)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Find FFTW3 and FFTW3 threads
+# Find FFTW3 single precision (fftw3f) and FFTW3 threads
 if(APPLE)
     execute_process(COMMAND brew --prefix fftw
                     OUTPUT_VARIABLE FFTW_PREFIX
                     OUTPUT_STRIP_TRAILING_WHITESPACE)
     if(FFTW_PREFIX)
         set(FFTW_INCLUDE_DIRS "${FFTW_PREFIX}/include")
-        set(FFTW_LIBRARIES "${FFTW_PREFIX}/lib/libfftw3.dylib" "${FFTW_PREFIX}/lib/libfftw3_threads.dylib")
+        set(FFTW_LIBRARIES "${FFTW_PREFIX}/lib/libfftw3f.dylib" "${FFTW_PREFIX}/lib/libfftw3f_threads.dylib")
     endif()
 else()
     find_package(PkgConfig REQUIRED)
-    pkg_check_modules(FFTW REQUIRED fftw3)
-    # Add threads library for Linux
-    list(APPEND FFTW_LIBRARIES fftw3_threads)
+    pkg_check_modules(FFTW REQUIRED fftw3f)
+    # Add threads library for Linux (single precision)
+    list(APPEND FFTW_LIBRARIES fftw3f_threads)
 endif()
 
 # Find threading library (pthread on Unix systems)
