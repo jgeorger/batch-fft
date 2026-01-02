@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """
 Benchmark pure CUDA C++ implementation
+Takes median of 5 runs for each test case
 """
 
 import subprocess
 import csv
 import sys
+import statistics
 
 # Test cases matching other benchmarks
 test_cases = [
@@ -22,31 +24,47 @@ test_cases = [
     (250, 524288),  # 512K FFT
 ]
 
+NUM_RUNS = 5
+
 def run_benchmark(batch, length):
-    """Run a single benchmark and return the result"""
+    """Run benchmark NUM_RUNS times and return median result"""
     try:
-        result = subprocess.run(
-            ['./build/batch_fft', '-b', str(batch), '-l', str(length)],
-            capture_output=True,
-            text=True,
-            timeout=60
-        )
+        times = []
+        gflops_values = []
 
-        if result.returncode != 0:
-            print(f"Error running benchmark: {result.stderr}", file=sys.stderr)
+        for _ in range(NUM_RUNS):
+            result = subprocess.run(
+                ['./build/batch_fft', '-b', str(batch), '-l', str(length)],
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+
+            if result.returncode != 0:
+                print(f"Error running benchmark: {result.stderr}", file=sys.stderr)
+                continue
+
+            # Parse CSV output (skip header)
+            lines = result.stdout.strip().split('\n')
+            if len(lines) < 2:
+                continue
+
+            data = lines[1].split(',')
+            times.append(float(data[2]))
+            gflops_values.append(float(data[3]))
+
+        if not times:
             return None
 
-        # Parse CSV output (skip header)
-        lines = result.stdout.strip().split('\n')
-        if len(lines) < 2:
-            return None
+        # Return median values
+        median_time = statistics.median(times)
+        median_gflops = statistics.median(gflops_values)
 
-        data = lines[1].split(',')
         return {
-            'batch': int(data[0]),
-            'fft_length': int(data[1]),
-            'time_ms': float(data[2]),
-            'gflops': float(data[3])
+            'batch': batch,
+            'fft_length': length,
+            'time_ms': median_time,
+            'gflops': median_gflops
         }
     except subprocess.TimeoutExpired:
         print(f"Timeout for batch={batch}, length={length}", file=sys.stderr)

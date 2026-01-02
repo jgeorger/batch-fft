@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """
 Benchmark FFTW implementation with optimal thread count selection
+Takes median of 5 runs for each test case
 """
 
 import subprocess
 import csv
 import sys
+import statistics
 
 # Test cases matching previous benchmarks
 test_cases = [
@@ -23,33 +25,48 @@ test_cases = [
 ]
 
 thread_counts = [1, 2, 4, 8]
+NUM_RUNS = 5
 
 def run_benchmark(batch, length, threads):
-    """Run a single benchmark and return the result"""
+    """Run benchmark NUM_RUNS times and return median result"""
     try:
-        result = subprocess.run(
-            ['./build/batch_fft', '-b', str(batch), '-l', str(length), '-t', str(threads)],
-            capture_output=True,
-            text=True,
-            timeout=60
-        )
+        times = []
+        gflops_values = []
 
-        if result.returncode != 0:
-            print(f"Error running benchmark: {result.stderr}", file=sys.stderr)
+        for _ in range(NUM_RUNS):
+            result = subprocess.run(
+                ['./build/batch_fft', '-b', str(batch), '-l', str(length), '-t', str(threads)],
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+
+            if result.returncode != 0:
+                print(f"Error running benchmark: {result.stderr}", file=sys.stderr)
+                continue
+
+            # Parse CSV output (skip header)
+            lines = result.stdout.strip().split('\n')
+            if len(lines) < 2:
+                continue
+
+            data = lines[1].split(',')
+            times.append(float(data[3]))
+            gflops_values.append(float(data[4]))
+
+        if not times:
             return None
 
-        # Parse CSV output (skip header)
-        lines = result.stdout.strip().split('\n')
-        if len(lines) < 2:
-            return None
+        # Return median values
+        median_time = statistics.median(times)
+        median_gflops = statistics.median(gflops_values)
 
-        data = lines[1].split(',')
         return {
-            'batch': int(data[0]),
-            'fft_length': int(data[1]),
-            'threads': int(data[2]),
-            'time_ms': float(data[3]),
-            'gflops': float(data[4])
+            'batch': batch,
+            'fft_length': length,
+            'threads': threads,
+            'time_ms': median_time,
+            'gflops': median_gflops
         }
     except subprocess.TimeoutExpired:
         print(f"Timeout for batch={batch}, length={length}, threads={threads}", file=sys.stderr)
