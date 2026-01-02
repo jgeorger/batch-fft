@@ -111,17 +111,17 @@ Five implementations are included for comprehensive performance comparison:
 | FFT Size | Batch | **FFTW (CPU)** | **MKL (CPU)** | **Rust (CPU)** | **Rust-CUDA (GPU)** | **CUDA (GPU)** |
 |----------|-------|----------------|---------------|----------------|---------------------|----------------|
 | | | Threads / Time / GFLOPS | Threads / Time / GFLOPS / vs FFTW | Threads / Time / GFLOPS / vs FFTW | Time / GFLOPS / vs FFTW | Time / GFLOPS / vs FFTW |
-| **1K** | 1000 | 4T / 0.65ms / 79 | 4T / 1.12ms / 46 / 0.58x | 4T / 0.92ms / 56 / 0.71x | 0.20ms / 252 / **3.19x** | 0.20ms / 252 / **3.19x** |
-| **1K** | 10000 | 4T / 6.53ms / 78 | 4T / 6.91ms / 74 / 0.95x | 4T / 6.89ms / 74 / 0.95x | 0.81ms / 628 / **8.05x** | 0.81ms / 628 / **8.05x** |
-| **2K** | 1000 | 4T / 1.22ms / 92 | 4T / 1.79ms / 63 / 0.68x | 4T / 1.59ms / 71 / 0.77x | 0.28ms / 407 / **4.42x** | 0.28ms / 407 / **4.42x** |
-| **4K** | 1000 | 4T / 2.69ms / 91 | 8T / 3.46ms / 71 / 0.78x | 4T / 3.09ms / 80 / 0.88x | 0.42ms / 588 / **6.46x** | 0.42ms / 588 / **6.46x** |
-| **8K** | 500 | 4T / 3.24ms / 82 | 8T / 3.32ms / 80 / 0.98x | 4T / 3.38ms / 79 / 0.96x | 0.44ms / 607 / **7.40x** | 0.44ms / 607 / **7.40x** |
-| **16K** | 500 | 4T / 7.34ms / 78 | 8T / 7.78ms / 74 / 0.95x | 8T / 7.60ms / 75 / 0.96x | 1.44ms / 399 / **5.12x** | 1.44ms / 399 / **5.12x** |
-| **32K** | 250 | 4T / 9.35ms / 66 | 8T / 8.29ms / 74 / **1.12x** | 4T / 8.46ms / 73 / **1.11x** | 1.34ms / 460 / **6.97x** | 1.34ms / 460 / **6.97x** |
-| **64K** | 250 | 4T / 19.49ms / 67 | 4T / 21.21ms / 62 / 0.93x | 8T / 23.54ms / 56 / 0.84x | 2.52ms / 521 / **7.78x** | 2.52ms / 521 / **7.78x** |
-| **128K** | 250 | 8T / 45.23ms / 62 | 4T / 69.40ms / 40 / 0.65x | 4T / 67.29ms / 41 / 0.66x | 4.98ms / 559 / **9.02x** | 4.98ms / 559 / **9.02x** |
-| **256K** | 250 | 8T / 129.09ms / 46 | 8T / 142.74ms / 41 / 0.89x | 2T / 197.58ms / 30 / 0.65x | 10.19ms / 579 / **12.59x** | 10.19ms / 579 / **12.59x** |
-| **512K** | 250 | 8T / 364.53ms / 34 | 4T / 297.44ms / 42 / **1.24x** | 4T / 505.45ms / 25 / 0.74x | 21.15ms / 589 / **17.32x** | 21.15ms / 589 / **17.32x** |
+| **1K** | 1000 | 4T / 0.65ms / 79 | 4T / 1.12ms / 46 / 0.58x | 4T / 0.92ms / 56 / 0.71x | 0.20ms / 252 / **3.19x** | 0.14ms / 371 / **4.70x** |
+| **1K** | 10000 | 4T / 6.53ms / 78 | 4T / 6.91ms / 74 / 0.95x | 4T / 6.89ms / 74 / 0.95x | 0.81ms / 628 / **8.05x** | 0.85ms / 605 / **7.76x** |
+| **2K** | 1000 | 4T / 1.22ms / 92 | 4T / 1.79ms / 63 / 0.68x | 4T / 1.59ms / 71 / 0.77x | 0.28ms / 407 / **4.42x** | 0.26ms / 431 / **4.68x** |
+| **4K** | 1000 | 4T / 2.69ms / 91 | 8T / 3.46ms / 71 / 0.78x | 4T / 3.09ms / 80 / 0.88x | 0.42ms / 588 / **6.46x** | 0.46ms / 540 / **5.93x** |
+| **8K** | 500 | 4T / 3.24ms / 82 | 8T / 3.32ms / 80 / 0.98x | 4T / 3.38ms / 79 / 0.96x | 0.44ms / 607 / **7.40x** | 0.42ms / 636 / **7.76x** |
+| **16K** | 500 | 4T / 7.34ms / 78 | 8T / 7.78ms / 74 / 0.95x | 8T / 7.60ms / 75 / 0.96x | 1.44ms / 399 / **5.12x** | 1.43ms / 400 / **5.13x** |
+| **32K** | 250 | 4T / 9.35ms / 66 | 8T / 8.29ms / 74 / **1.12x** | 4T / 8.46ms / 73 / **1.11x** | 1.34ms / 460 / **6.97x** | 1.31ms / 470 / **7.12x** |
+| **64K** | 250 | 4T / 19.49ms / 67 | 4T / 21.21ms / 62 / 0.93x | 8T / 23.54ms / 56 / 0.84x | 2.52ms / 521 / **7.78x** | 2.63ms / 498 / **7.43x** |
+| **128K** | 250 | 8T / 45.23ms / 62 | 4T / 69.40ms / 40 / 0.65x | 4T / 67.29ms / 41 / 0.66x | 4.98ms / 559 / **9.02x** | 5.04ms / 553 / **8.92x** |
+| **256K** | 250 | 8T / 129.09ms / 46 | 8T / 142.74ms / 41 / 0.89x | 2T / 197.58ms / 30 / 0.65x | 10.19ms / 579 / **12.59x** | 10.02ms / 589 / **12.80x** |
+| **512K** | 250 | 8T / 364.53ms / 34 | 4T / 297.44ms / 42 / **1.24x** | 4T / 505.45ms / 25 / 0.74x | 21.15ms / 589 / **17.32x** | 22.01ms / 566 / **16.65x** |
 
 ### Key Findings
 
@@ -165,8 +165,8 @@ Five implementations are included for comprehensive performance comparison:
 
 | Implementation | Peak GFLOPS | Average GFLOPS | Typical Range | Best Use Case |
 |----------------|-------------|----------------|---------------|---------------|
-| **CUDA (GPU)** | **628** | **508** | 252-628 | Direct C++ cuFFT - maximum performance |
-| **Rust-CUDA (GPU)** | **628** | **508** | 252-628 | Rust FFI to cuFFT - same performance as CUDA |
+| **CUDA (GPU)** | **636** | **514** | 371-636 | Direct C++ cuFFT - maximum GPU performance |
+| **Rust-CUDA (GPU)** | **628** | **508** | 252-628 | Rust FFI to cuFFT - near-identical GPU performance |
 | **FFTW (CPU)** | **92** | **71** | 34-92 | Best CPU option for single precision |
 | **Intel MKL (CPU)** | 80 | **61** | 40-80 | Intel processors, comparable to Rust |
 | **Rust (CPU)** | 80 | **60** | 25-80 | Modern safe code, comparable to MKL |
@@ -202,9 +202,10 @@ Five implementations are included for comprehensive performance comparison:
 
 With **fair timing and consistent single precision** across all implementations, the benchmarks demonstrate clear performance tiers:
 
-1. **GPU Implementations (CUDA & Rust-CUDA)**: Dominant across all workloads - **8-17x faster** than best CPU (FFTW)
-   - Average: **508 GFLOPS**, Peak: 628 GFLOPS
-   - Both implementations achieve identical performance
+1. **GPU Implementations (CUDA & Rust-CUDA)**: Dominant across all workloads - **5-17x faster** than best CPU (FFTW)
+   - CUDA C++ Average: **514 GFLOPS**, Peak: 636 GFLOPS
+   - Rust-CUDA Average: **508 GFLOPS**, Peak: 628 GFLOPS
+   - Both implementations achieve near-identical performance (within 1%)
 2. **FFTW (CPU)**: Best CPU implementation - wins 10/11 cases vs other CPUs
    - Average: **71 GFLOPS**, Peak: 92 GFLOPS
 3. **Intel MKL (CPU)** & **Rust (CPU)**: Essentially tied for second place
